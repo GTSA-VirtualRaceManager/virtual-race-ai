@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Virtual Race Manager</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&display=swap');
+        
+        body {
+            font-family: 'Orbitron', sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: #121212;
+            color: white;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            border-radius: 10px;
+            box-shadow: 0px 0px 15px rgba(255, 0, 0, 0.5);
+        }
+        input, select, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 12px;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        input, select {
+            background: #333;
+            color: white;
+        }
+        button {
+            background: red;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+        button:hover {
+            background: white;
+            color: red;
+        }
+        #strategy {
+            margin-top: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            font-size: 18px;
+            text-align: left;
+        }
+        .logo {
+            width: 150px;
+            margin: 20px auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <img src="GTSSA_01.svg" alt="GTSA Logo" width="150">
+    </div>
+    <div class="container">
+        <h1>Virtual Race Manager</h1>
+        <label>Track:</label>
+        <input type="text" id="track">
+        
+        <label>Car Model:</label>
+        <input type="text" id="car">
+        
+        <label>Lap Times & Lifespan per Tyre:</label>
+        <div id="lapTimeInputs"></div>
+        <button onclick="addLapTimeInput()">Add Tyre Data</button>
+        
+        <label>Fuel Lifespan (laps per tank):</label>
+        <input type="number" id="fuelLifespan">
+        
+        <label>Total Race Duration (laps only):</label>
+        <input type="number" id="raceDuration" placeholder="Enter total race laps">
+        
+        <label>Mandatory Tyre Compound (if any):</label>
+        <select id="mandatoryTyre">
+            <option value="None">None</option>
+            <option value="Soft">Soft</option>
+            <option value="Medium">Medium</option>
+            <option value="Hard">Hard</option>
+            <option value="Intermediate">Intermediate</option>
+            <option value="Heavy Wet">Heavy Wet</option>
+            <option value="Dirt">Dirt</option>
+        </select>
+        
+        <label><input type="checkbox" id="variableWeather" onchange="toggleWeatherInputs()"> Variable Weather (Wet Conditions)</label>
+        
+        <div id="weatherInputs" style="display: none;">
+            <label>Rain Start Lap:</label>
+            <input type="number" id="rainStartLap" placeholder="Enter lap number">
+            
+            <label>Rain End Lap:</label>
+            <input type="number" id="rainEndLap" placeholder="Enter lap number">
+        </div>
+        
+        <button onclick="generateStrategy()">Generate Strategy</button>
+        <button onclick="shareStrategy()">Share Strategy</button>
+        
+        <div id="strategy"></div>
+    </div>
+
+    <script>
+        function toggleWeatherInputs() {
+            let weatherInputs = document.getElementById("weatherInputs");
+            weatherInputs.style.display = document.getElementById("variableWeather").checked ? "block" : "none";
+        }
+        
+        function addLapTimeInput() {
+            let container = document.getElementById("lapTimeInputs");
+            let div = document.createElement("div");
+            div.innerHTML = `
+                <select class="tyreCompound">
+                    <option value="Soft">Soft</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                    <option value="Intermediate">Intermediate</option>
+                    <option value="Heavy Wet">Heavy Wet</option>
+                    <option value="Dirt">Dirt</option>
+                </select>
+                <input type="number" placeholder="Minutes" class="lapMinutes">
+                <input type="number" placeholder="Seconds" class="lapSeconds">
+                <input type="number" placeholder="Milliseconds" class="lapMilliseconds">
+                <input type="number" placeholder="Tyre Lifespan in Laps" class="tyreLifespan">
+            `;
+            container.appendChild(div);
+        }
+        
+        async function generateStrategy() {
+            let raceData = {
+                track: document.getElementById("track").value,
+                car: document.getElementById("car").value,
+                raceLaps: document.getElementById("raceDuration").value,
+                fuelLifespan: document.getElementById("fuelLifespan").value,
+                mandatoryTyre: document.getElementById("mandatoryTyre").value,
+                tyres: []
+            };
+
+            let tyreElements = document.querySelectorAll(".tyreCompound");
+            let minutes = document.querySelectorAll(".lapMinutes");
+            let seconds = document.querySelectorAll(".lapSeconds");
+            let milliseconds = document.querySelectorAll(".lapMilliseconds");
+            let tyreLifespans = document.querySelectorAll(".tyreLifespan");
+
+            for (let i = 0; i < tyreElements.length; i++) {
+                raceData.tyres.push({
+                    compound: tyreElements[i].value,
+                    lapTime: (parseInt(minutes[i].value) * 60) + parseInt(seconds[i].value) + (parseInt(milliseconds[i].value) / 1000),
+                    lifespan: parseInt(tyreLifespans[i].value)
+                });
+            }
+
+            try {
+                let response = await fetch('http://localhost:5000/generate-strategy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ raceData })
+                });
+
+                let result = await response.json();
+                document.getElementById("strategy").innerText = result.strategy;
+            } catch (error) {
+                document.getElementById("strategy").innerText = "Error generating strategy.";
+            }
+        }
+    </script>
+</body>
+</html>
