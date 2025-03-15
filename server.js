@@ -1,3 +1,13 @@
+import 'dotenv/config';
+
+const apiKey = process.env.GEMINI_API_KEY;
+
+if (!apiKey) {
+    console.error("❌ API Key is Undefined! Make sure the .env file exists and dotenv is loaded.");
+} else {
+    console.log("✅ API Key Loaded Successfully.");
+}
+
 import express from "express";
 import cors from "cors";
 import bodyParser from "body-parser";
@@ -19,13 +29,18 @@ app.get("/env-check", (req, res) => {
 });
 
 // ✅ Generate AI-Based Race Strategy using Google Gemini API
-app.post("/generate-strategy", async (req, res) => {
-    try {
-        const raceData = req.body.raceData;
+app.post('/generate_strategy', async (req, res) => {
+    const { track, car, tyres, laps } = req.body;
+    
+    const response = await fetch('https://generativelanguage.googleapis.com/v1/models/gemini-pro:generateContent?key=' + process.env.GEMINI_API_KEY, {
+        method: 'POST',
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: `Generate a racing strategy for ${track} using a ${car} on ${tyres} tyres over ${laps} laps.` })
+    });
 
-        if (!raceData || !raceData.tyres || raceData.tyres.length === 0) {
-            return res.status(400).json({ error: "Incomplete race data" });
-        }
+    const data = await response.json();
+    res.json(data);
+});
 
         // 🏎️ Build Strategy Prompt
         const prompt = `
